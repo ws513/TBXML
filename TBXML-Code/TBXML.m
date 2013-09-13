@@ -631,12 +631,12 @@
 			// remove ending cdata section tag
 			memcpy(CDATAEnd-9, CDATAEnd+3, textLength-CDATALength-3);
 			
-			// blank out end of text
-			memset(elementStart+textLength-12,' ',12);
-			
-			// set new search start position 
-			elementStart = CDATAEnd-9;
-			continue;
+			// mark new end of text
+            *(elementStart+textLength-12) = '\0';
+            
+            // set new search start position
+            elementStart = elementStart+textLength-11;
+            continue;
 		}
 		
 		
@@ -671,18 +671,6 @@
 		if (*elementNameStart == '/') {
 			elementStart = elementEnd+1;
 			if (parentXMLElement) {
-
-				if (parentXMLElement->text) {
-					// trim whitespace from start of text
-					while (isspace(*parentXMLElement->text)) 
-						parentXMLElement->text++;
-					
-					// trim whitespace from end of text
-					char * end = parentXMLElement->text + strlen(parentXMLElement->text)-1;
-					while (end > parentXMLElement->text && isspace(*end)) 
-						*end--=0;
-				}
-				
 				parentXMLElement = parentXMLElement->parentElement;
 				
 				// if parent element has children clear text
