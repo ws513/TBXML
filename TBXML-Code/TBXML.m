@@ -634,8 +634,8 @@
 			// mark new end of text
             *(elementStart+textLength-12) = '\0';
             
-            // set new search start position
-            elementStart = elementStart+textLength-11;
+            // set new search start position to right after the end of CDATA
+            elementStart = CDATAEnd + 3;
             continue;
 		}
 		
