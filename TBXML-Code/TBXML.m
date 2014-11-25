@@ -28,7 +28,7 @@
 // ================================================================================================
 #import "TBXML.h"
 
-static NSStringEncoding tbxmlGlobalAssumedEncoding;
+static NSStringEncoding tbxmlGlobalAssumedEncoding = NSUTF8StringEncoding;
 
 // ================================================================================================
 // Private methods
