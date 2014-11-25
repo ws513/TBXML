@@ -28,6 +28,8 @@
 // ================================================================================================
 #import "TBXML.h"
 
+static NSStringEncoding tbxmlGlobalAssumedEncoding = NSUTF8StringEncoding;
+
 // ================================================================================================
 // Private methods
 // ================================================================================================
@@ -47,6 +49,11 @@
 @implementation TBXML
 
 @synthesize rootXMLElement;
+
++ (void)setGlobalAssumedEncoding:(NSStringEncoding)stringEncoding
+{
+    tbxmlGlobalAssumedEncoding = stringEncoding;
+}
 
 + (id)newTBXMLWithXMLString:(NSString*)aXMLString {
 	return [[TBXML alloc] initWithXMLString:aXMLString];
@@ -107,14 +114,14 @@
 		
         
         // allocate memory for byte array
-        int result = [self allocateBytesOfLength:[aXMLString lengthOfBytesUsingEncoding:NSUTF8StringEncoding] error:error];
+        int result = [self allocateBytesOfLength:[aXMLString lengthOfBytesUsingEncoding:tbxmlGlobalAssumedEncoding] error:error];
         
         // if an error occured, return
         if (result != D_TBXML_SUCCESS) 
             return self;
         
 		// copy string to byte array
-		[aXMLString getBytes:bytes maxLength:bytesLength usedLength:0 encoding:NSUTF8StringEncoding options:NSStringEncodingConversionAllowLossy range:NSMakeRange(0, bytesLength) remainingRange:nil];
+		[aXMLString getBytes:bytes maxLength:bytesLength usedLength:0 encoding:tbxmlGlobalAssumedEncoding options:NSStringEncodingConversionAllowLossy range:NSMakeRange(0, bytesLength) remainingRange:nil];
 		
 		// set null terminator at end of byte array
 		bytes[bytesLength] = 0;
@@ -272,7 +279,7 @@
         return @"";
     }
     
-	return [NSString stringWithCString:&aXMLElement->name[0] encoding:NSUTF8StringEncoding];
+	return [NSString stringWithCString:&aXMLElement->name[0] encoding:tbxmlGlobalAssumedEncoding];
 }
 
 + (NSString*) attributeName:(TBXMLAttribute*)aXMLAttribute {
@@ -292,7 +299,7 @@
         return @"";
     }
     
-	return [NSString stringWithCString:&aXMLAttribute->name[0] encoding:NSUTF8StringEncoding];
+	return [NSString stringWithCString:&aXMLAttribute->name[0] encoding:tbxmlGlobalAssumedEncoding];
 }
 
 
@@ -313,7 +320,7 @@
         return @"";
     }
     
-	return [NSString stringWithCString:&aXMLAttribute->value[0] encoding:NSUTF8StringEncoding];
+	return [NSString stringWithCString:&aXMLAttribute->value[0] encoding:tbxmlGlobalAssumedEncoding];
 }
 
 + (NSString*) textForElement:(TBXMLElement*)aXMLElement {
@@ -333,7 +340,7 @@
         return @"";
     }
     
-	return [NSString stringWithCString:&aXMLElement->text[0] encoding:NSUTF8StringEncoding];
+	return [NSString stringWithCString:&aXMLElement->text[0] encoding:tbxmlGlobalAssumedEncoding];
 }
 
 + (NSString*) valueOfAttributeNamed:(NSString *)aName forElement:(TBXMLElement*)aXMLElement {
@@ -353,14 +360,14 @@
         return @"";
     }
     
-	const char * name = [aName cStringUsingEncoding:NSUTF8StringEncoding];
+	const char * name = [aName cStringUsingEncoding:tbxmlGlobalAssumedEncoding];
 	NSString * value = nil;
     
 	TBXMLAttribute * attribute = aXMLElement->firstAttribute;
 	while (attribute) {
 		if (strlen(attribute->name) == strlen(name) && memcmp(attribute->name,name,strlen(name)) == 0) {
             if (attribute->value[0])
-                value = [NSString stringWithCString:&attribute->value[0] encoding:NSUTF8StringEncoding];
+                value = [NSString stringWithCString:&attribute->value[0] encoding:tbxmlGlobalAssumedEncoding];
             else
                 value = @"";
             
@@ -396,7 +403,7 @@
     }
     
 	TBXMLElement * xmlElement = aParentXMLElement->firstChild;
-	const char * name = [aName cStringUsingEncoding:NSUTF8StringEncoding];
+	const char * name = [aName cStringUsingEncoding:tbxmlGlobalAssumedEncoding];
 	while (xmlElement) {
 		if (strlen(xmlElement->name) == strlen(name) && memcmp(xmlElement->name,name,strlen(name)) == 0) {
 			return xmlElement;
@@ -427,7 +434,7 @@
     }
     
 	TBXMLElement * xmlElement = aXMLElement->nextSibling;
-	const char * name = [aName cStringUsingEncoding:NSUTF8StringEncoding];
+	const char * name = [aName cStringUsingEncoding:tbxmlGlobalAssumedEncoding];
 	while (xmlElement) {
 		if (strlen(xmlElement->name) == strlen(name) && memcmp(xmlElement->name,name,strlen(name)) == 0) {
 			return xmlElement;
@@ -631,12 +638,12 @@
 			// remove ending cdata section tag
 			memcpy(CDATAEnd-9, CDATAEnd+3, textLength-CDATALength-3);
 			
-			// blank out end of text
-			memset(elementStart+textLength-12,' ',12);
-			
-			// set new search start position 
-			elementStart = CDATAEnd-9;
-			continue;
+			// mark new end of text
+            *(elementStart+textLength-12) = '\0';
+            
+            // set new search start position to right after the end of CDATA
+            elementStart = CDATAEnd + 3;
+            continue;
 		}
 		
 		
@@ -671,18 +678,6 @@
 		if (*elementNameStart == '/') {
 			elementStart = elementEnd+1;
 			if (parentXMLElement) {
-
-				if (parentXMLElement->text) {
-					// trim whitespace from start of text
-					while (isspace(*parentXMLElement->text)) 
-						parentXMLElement->text++;
-					
-					// trim whitespace from end of text
-					char * end = parentXMLElement->text + strlen(parentXMLElement->text)-1;
-					while (end > parentXMLElement->text && isspace(*end)) 
-						*end--=0;
-				}
-				
 				parentXMLElement = parentXMLElement->parentElement;
 				
 				// if parent element has children clear text
